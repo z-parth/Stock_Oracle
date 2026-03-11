@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StockOracle — Stock Price Predictor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080b10;
+      --surface:   #0d1117;
+      --border:    #1e2a38;
+      --accent:    #00ff88;
+      --accent2:   #0af;
+      --danger:    #ff4d6d;
+      --text:      #e0e8f0;
+      --muted:     #4a5a6a;
+      --card:      #111820;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    
+    body::after {
+      content: '';
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,255,136,0.07) 0%, transparent 70%);
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: 0;
+      animation: pulse 6s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+      50%       { opacity: 1;   transform: translateX(-50%) scale(1.1); }
+    }
+
+    
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    
+    header {
+      text-align: center;
+      margin-bottom: 56px;
+      animation: fadeDown 0.8s ease both;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    .logo-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: blink 1.5s step-end infinite;
+    }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    h1 {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, #fff 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 14px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-family: 'Space Mono', monospace;
+      letter-spacing: 1px;
+    }
+
+    
+    .search-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 32px;
+      animation: fadeUp 0.8s ease 0.2s both;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .ticker-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: 'Space Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .ticker-input::placeholder {
+      color: var(--muted);
+      letter-spacing: 2px;
+      font-weight: 400;
+    }
+
+    .ticker-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,255,136,0.1);
+    }
+
+    .predict-btn {
+      padding: 16px 32px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.2s;
+      white-space: nowrap;
+    }
+
+    .predict-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,255,136,0.3);
+    }
+
+    .predict-btn:active { transform: translateY(0); }
+
+    .predict-btn:disabled {
+      background: var(--muted);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    
+    .quick-picks {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .quick-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      letter-spacing: 1px;
+    }
+
+    .chip {
+      padding: 5px 12px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    
+    .status-bar {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      background: rgba(0, 170, 255, 0.06);
+      border: 1px solid rgba(0, 170, 255, 0.2);
+      border-radius: 10px;
+      margin-bottom: 24px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--accent2);
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .status-bar.visible { display: flex; }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(0,170,255,0.2);
+      border-top-color: var(--accent2);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    
+    .error-box {
+      display: none;
+      padding: 16px 20px;
+      background: rgba(255,77,109,0.08);
+      border: 1px solid rgba(255,77,109,0.3);
+      border-radius: 10px;
+      margin-bottom: 24px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.82rem;
+      color: var(--danger);
+    }
+
+    .error-box.visible { display: block; }
+
+    
+    .result-card {
+      display: none;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .result-card.visible { display: block; }
+
+    .result-header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .result-ticker {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 2px;
+    }
+
+    .direction-badge {
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+
+    .direction-badge.up {
+      background: rgba(0,255,136,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(0,255,136,0.3);
+    }
+
+    .direction-badge.down {
+      background: rgba(255,77,109,0.12);
+      color: var(--danger);
+      border: 1px solid rgba(255,77,109,0.3);
+    }
+
+    
+    .price-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .price-cell {
+      padding: 28px 32px;
+      border-right: 1px solid var(--border);
+    }
+
+    .price-cell:last-child { border-right: none; }
+
+    .price-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .price-value {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .price-value.accent  { color: var(--accent); }
+    .price-value.up      { color: var(--accent); }
+    .price-value.down    { color: var(--danger); }
+
+    /* ── Footer of card ── */
+    .result-footer {
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cache-status {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    .cache-status span {
+      color: var(--accent2);
+    }
+
+    .refresh-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 14px;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .refresh-btn:hover {
+      border-color: var(--accent2);
+      color: var(--accent2);
+    }
+
+    
+    .disclaimer {
+      margin-top: 40px;
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      line-height: 1.8;
+      letter-spacing: 0.5px;
+      animation: fadeUp 0.8s ease 0.4s both;
+    }
+
+    
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    
+    @media (max-width: 560px) {
+      .price-grid { grid-template-columns: 1fr; }
+      .price-cell { border-right: none; border-bottom: 1px solid var(--border); }
+      .price-cell:last-child { border-bottom: none; }
+      .input-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      AI — Powered
+    </div>
+    <h1>StockOracle</h1>
+    <p class="subtitle">// ML Price Prediction Engine</p>
+  </header>
+
+  <!-- Search -->
+  <div class="search-card">
+    <div class="input-row">
+      <input
+        class="ticker-input"
+        id="tickerInput"
+        type="text"
+        placeholder="e.g. AAPL"
+        maxlength="10"
+        autocomplete="off"
+      />
+      <button class="predict-btn" id="predictBtn" onclick="runPrediction()">
+        Predict →
+      </button>
+    </div>
+    <div class="quick-picks">
+      <span class="quick-label">QUICK:</span>
+      <span class="chip" onclick="quickPick('AAPL')">AAPL</span>
+      <span class="chip" onclick="quickPick('TSLA')">TSLA</span>
+      <span class="chip" onclick="quickPick('MSFT')">MSFT</span>
+      <span class="chip" onclick="quickPick('GOOGL')">GOOGL</span>
+      <span class="chip" onclick="quickPick('AMZN')">AMZN</span>
+      <span class="chip" onclick="quickPick('META')">META</span>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="status-bar" id="statusBar">
+    <div class="spinner"></div>
+    <span id="statusText">Fetching data...</span>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- Result -->
+  <div class="result-card" id="resultCard">
+    <div class="result-header">
+      <div class="result-ticker" id="resTicker">—</div>
+      <div class="direction-badge" id="resBadge">—</div>
+    </div>
+    <div class="price-grid">
+      <div class="price-cell">
+        <div class="price-label">Current Price</div>
+        <div class="price-value" id="resCurrent">—</div>
+      </div>
+      <div class="price-cell">
+        <div class="price-label">Predicted Price</div>
+        <div class="price-value accent" id="resPredicted">—</div>
+      </div>
+      <div class="price-cell">
+        <div class="price-label">Expected Change</div>
+        <div class="price-value" id="resChange">—</div>
+      </div>
+    </div>
+    <div class="result-footer">
+      <div class="cache-status" id="cacheStatus">—</div>
+      <button class="refresh-btn" onclick="runPrediction(true)">↺ Retrain</button>
+    </div>
+  </div>
+
+  <!-- Disclaimer -->
+  <p class="disclaimer">
+    Predictions are generated by a machine learning model trained on historical data.<br/>
+    This is not financial advice. Always do your own research before investing.
+  </p>
+
+</div>
+
+<script>
+  const API = 'http://127.0.0.1:8000';
+
+  // Allow Enter key to trigger prediction
+  document.getElementById('tickerInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') runPrediction();
+  });
+
+  function quickPick(ticker) {
+    document.getElementById('tickerInput').value = ticker;
+    runPrediction();
+  }
+
+  function setStatus(msg) {
+    const bar = document.getElementById('statusBar');
+    document.getElementById('statusText').textContent = msg;
+    bar.classList.add('visible');
+  }
+
+  function hideStatus() {
+    document.getElementById('statusBar').classList.remove('visible');
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = '⚠ ' + msg;
+    box.classList.add('visible');
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').classList.remove('visible');
+  }
+
+  async function runPrediction(forceRetrain = false) {
+    const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+    if (!ticker) {
+      showError('Please enter a stock ticker symbol.');
+      return;
+    }
+
+    // Reset UI
+    hideError();
+    document.getElementById('resultCard').classList.remove('visible');
+    document.getElementById('predictBtn').disabled = true;
+
+    setStatus(`Fetching data for ${ticker}...`);
+
+    try {
+      const res = await fetch(`${API}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, force_retrain: forceRetrain })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Prediction failed.');
+      }
+
+      setStatus('Running model...');
+      const data = await res.json();
+      renderResult(data);
+
+    } catch (err) {
+      hideStatus();
+      showError(err.message || 'Could not connect to the API. Make sure it is running.');
+    } finally {
+      document.getElementById('predictBtn').disabled = false;
+      hideStatus();
+    }
+  }
+
+  function renderResult(data) {
+    const isUp = data.direction === 'UP';
+    const changeSign = isUp ? '+' : '';
+
+    // Ticker & badge
+    document.getElementById('resTicker').textContent = data.ticker;
+
+    const badge = document.getElementById('resBadge');
+    badge.textContent = isUp ? '▲ BULLISH' : '▼ BEARISH';
+    badge.className = 'direction-badge ' + (isUp ? 'up' : 'down');
+
+    // Prices
+    document.getElementById('resCurrent').textContent   = `$${data.current_price.toFixed(2)}`;
+    document.getElementById('resPredicted').textContent = `$${data.predicted_price.toFixed(2)}`;
+
+    const changeEl = document.getElementById('resChange');
+    changeEl.textContent = `${changeSign}$${data.change.toFixed(2)} (${changeSign}${data.change_pct.toFixed(2)}%)`;
+    changeEl.className = 'price-value ' + (isUp ? 'up' : 'down');
+
+    // Cache status
+    const cacheEl = document.getElementById('cacheStatus');
+    if (data.status === 'loaded_from_cache') {
+      cacheEl.innerHTML = 'MODEL: <span>CACHED</span>';
+    } else {
+      cacheEl.innerHTML = 'MODEL: <span>FRESHLY TRAINED</span>';
+    }
+
+    // Show card
+    document.getElementById('resultCard').classList.add('visible');
+  }
+</script>
+</body>
+</html>
