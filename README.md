@@ -75,8 +75,8 @@ Frontend displays: current price, predicted price, change %
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/YOUR_USERNAME/stock-predictor.git
-cd stock-predictor
+git clone https://github.com/YOUR_USERNAME/Stock_Oracle.git
+cd Stock_Oracle
 ```
 
 ### 2. Install dependencies
