@@ -6,23 +6,13 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, r2_score
 
-# Folder where trained models will be saved
+
 MODEL_CACHE_DIR = "data/models"
 os.makedirs(MODEL_CACHE_DIR, exist_ok=True)
 
 
 def prepare_features(df):
-    """
-    Engineers features from raw stock data for the model to learn from.
-    Instead of just feeding raw prices, we create indicators like moving averages,
-    price changes, and volatility which help the model find patterns.
-
-    Args:
-        df (pd.DataFrame): Raw stock data with OHLCV columns
-
-    Returns:
-        pd.DataFrame: Data with added feature columns
-    """
+   
     df = df.copy()
 
     # Price-based features
@@ -55,25 +45,12 @@ def prepare_features(df):
 
 
 def train_model(ticker, df, force_retrain=False):
-    """
-    Trains a Random Forest model for the given ticker.
-    - If a saved model exists, loads it (fast).
-    - If not, trains a new one and saves it.
-
-    Args:
-        ticker (str): Stock ticker symbol e.g. "AAPL"
-        df (pd.DataFrame): Stock data from fetch_data.py
-        force_retrain (bool): If True, retrains even if a saved model exists
-
-    Returns:
-        model: Trained RandomForestRegressor
-        dict: Model performance metrics
-    """
+   
 
     ticker = ticker.upper().strip()
     model_file = os.path.join(MODEL_CACHE_DIR, f"{ticker}_model.pkl")
 
-    # Step 1 - Check if model already exists
+    
     if os.path.exists(model_file) and not force_retrain:
         print(f"[CACHE] Loading existing model for {ticker}...")
         with open(model_file, 'rb') as f:
@@ -81,7 +58,7 @@ def train_model(ticker, df, force_retrain=False):
         print(f"[CACHE] Model loaded successfully for {ticker}")
         return model, None
 
-    # Step 2 - Prepare features
+   
     print(f"[TRAINING] Preparing features for {ticker}...")
     df = prepare_features(df)
 
@@ -96,13 +73,13 @@ def train_model(ticker, df, force_retrain=False):
     X = df[feature_cols]
     y = df['Target']
 
-    # Step 3 - Split data (80% train, 20% test)
+    
     
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, shuffle=False
     )
 
-    # Step 4 - Train the Random Forest
+    
     print(f"[TRAINING] Training Random Forest for {ticker}... (this may take 10-30 seconds)")
     model = RandomForestRegressor(
         n_estimators=200,    
@@ -112,7 +89,7 @@ def train_model(ticker, df, force_retrain=False):
     )
     model.fit(X_train, y_train)
 
-    # Step 5 - Evaluate performance
+    
     predictions = model.predict(X_test)
     mae = mean_absolute_error(y_test, predictions)
     r2  = r2_score(y_test, predictions)
@@ -129,7 +106,7 @@ def train_model(ticker, df, force_retrain=False):
     print(f"       MAE  : ${mae:.2f} average error")
     print(f"       R²   : {r2:.4f} (closer to 1.0 is better)")
 
-    # Step 6 - Save model to disk
+    
     with open(model_file, 'wb') as f:
         pickle.dump(model, f)
     print(f"[SAVED] Model saved to {model_file}")
@@ -138,7 +115,7 @@ def train_model(ticker, df, force_retrain=False):
 
 
 if __name__ == "__main__":
-    # Test the full pipeline
+   
     import sys
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
     from src.data.fetch_data import fetch_stock_data
@@ -150,6 +127,6 @@ if __name__ == "__main__":
         print(f"Processing {ticker}...")
         df = fetch_stock_data(ticker)
         if df is not None:
-            model, metrics = train_model(ticker, df)
+            model, metrics = train_model(ticker, df, force_retrain=True)
             if metrics:
                 print(f"\nMetrics: {metrics}")
